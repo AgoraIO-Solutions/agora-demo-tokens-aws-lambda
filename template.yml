@@ -1,0 +1,80 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: An AWS Lambda application that calls the Lambda API.
+Globals:
+  Function:
+    Timeout: 5
+    Runtime: go1.x
+    Tracing: Active
+    Handler: main
+  Api:
+    Cors:
+      AllowMethods: "'GET, POST, PUT, OPTIONS, DELETE'"
+      AllowHeaders: "'*'"
+      AllowOrigin: "'*'"
+
+Resources:
+  DemoApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Models:
+        TokenQuery:
+          type: object
+          required:
+            - channels
+          properties:
+            channels:
+              type: string
+  ApiSanityCheck:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: main
+      Events:
+        Endpoint:
+          Type: Api
+          Properties:
+            Path: '/'
+            Method: get
+            RestApiId:
+              Ref: DemoApi
+      Description: A sainity check for a very simple lambda handler
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambda_ReadOnlyAccess
+        - AWSXrayWriteOnlyAccess
+  ApiNewTokenFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./demo_token/.
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: '/api/token'
+            Method: get
+            RestApiId:
+             Ref: DemoApi
+      Description: Issue the new API token
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambda_ReadOnlyAccess
+        - AWSXrayWriteOnlyAccess
+  ApiRefreshTokenFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./refresh_token/.
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: '/api/refresh_token'
+            Method: get
+            RestApiId:
+              Ref: DemoApi
+      Description: Issue the new API token
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambda_ReadOnlyAccess
+        - AWSXrayWriteOnlyAccess
